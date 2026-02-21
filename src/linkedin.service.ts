@@ -579,10 +579,19 @@ export class LinkedInService {
 
   private saveCredentials(credentials: LinkedInCredentials): void {
     credentials.lastUpdated = new Date().toISOString();
-    fs.writeFileSync(
-      this.credentialsPath,
-      JSON.stringify(credentials, null, 2)
-    );
+    try {
+      fs.writeFileSync(
+        this.credentialsPath,
+        JSON.stringify(credentials, null, 2)
+      );
+    } catch (err: any) {
+      // Credentials may be mounted read-only (e.g. Kubernetes secret); in-memory cache still works
+      if (err?.code === 'EROFS' || err?.message?.includes('read-only')) {
+        console.warn('   ⚠ Could not persist credentials (file is read-only); cache will be used.');
+      } else {
+        throw err;
+      }
+    }
   }
 
   // ── Private: Helpers ────────────────────────────────────────────────

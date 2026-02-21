@@ -248,7 +248,15 @@ async function start() {
   console.log(`👁  Headless: ${process.env.HEADLESS !== 'false' ? 'YES' : 'NO (headed)'}\n`);
 
   console.log('Initializing browser session...\n');
-  await linkedInService.init();
+  try {
+    await linkedInService.init();
+  } catch (err: any) {
+    console.warn(
+      '⚠ Browser/session init failed (server will start anyway):',
+      err.message
+    );
+    console.warn('   Mount valid linkedin-credentials.json to enable scraping.\n');
+  }
 
   app.listen(PORT, () => {
     console.log('\n' + '═'.repeat(65));
