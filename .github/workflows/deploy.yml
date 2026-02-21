@@ -60,6 +60,7 @@ jobs:
             --image=${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/cloud-run-source-deploy/${{ env.SERVICE_NAME }}:${{ github.sha }} \
             --region=${{ env.REGION }} \
             --platform=managed \
+            --execution-environment=gen2 \
             --allow-unauthenticated \
             --port=8080 \
             --min-instances=0 \
@@ -67,7 +68,9 @@ jobs:
             --memory=2Gi \
             --cpu=2 \
             --timeout=300 \
-            --set-env-vars="HEADLESS=true,AMBIENT_TRAFFIC=false,NODE_ENV=${{ env.NODE_ENV }},CREDENTIALS_PATH=/secrets/linkedin-credentials.json" \
+            --add-volume=name=creds,type=in-memory,size-limit=10Mi \
+            --add-volume-mount=volume=creds,mount-path=/app/creds \
+            --set-env-vars="HEADLESS=true,AMBIENT_TRAFFIC=false,NODE_ENV=${{ env.NODE_ENV }},CREDENTIALS_SOURCE=/secrets/linkedin-credentials.json,CREDENTIALS_PATH=/app/creds/linkedin-credentials.json" \
             --set-secrets="API_TOKEN=api-token:latest" \
             --set-secrets="/secrets/linkedin-credentials.json=linkedin-credentials-json:latest"
 

@@ -579,27 +579,10 @@ export class LinkedInService {
 
   private saveCredentials(credentials: LinkedInCredentials): void {
     credentials.lastUpdated = new Date().toISOString();
-    try {
-      fs.writeFileSync(
-        this.credentialsPath,
-        JSON.stringify(credentials, null, 2)
-      );
-    } catch (err: any) {
-      // Credentials may be mounted read-only (e.g. Cloud Run secret, Kubernetes secret); in-memory cache still works
-      const isReadOnly =
-        err?.code === 'EROFS' ||
-        err?.code === 'EACCES' ||
-        err?.code === 'EPERM' ||
-        err?.message?.includes('read-only') ||
-        err?.message?.includes('permission denied');
-      if (isReadOnly) {
-        console.warn(
-          '   ⚠ Could not persist credentials (file is read-only or not writable); in-memory session will be used.'
-        );
-      } else {
-        throw err;
-      }
-    }
+    fs.writeFileSync(
+      this.credentialsPath,
+      JSON.stringify(credentials, null, 2)
+    );
   }
 
   // ── Private: Helpers ────────────────────────────────────────────────

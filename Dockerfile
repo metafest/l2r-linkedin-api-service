@@ -20,8 +20,11 @@ COPY --from=base /app/package*.json ./
 COPY --from=base /app/dist ./dist
 RUN npm ci --omit=dev
 
-# Credentials file will be mounted at runtime (e.g. Secret Manager or volume)
-# Default path inside container
+# Entrypoint: on Cloud Run, copies read-only secret into writable volume
+COPY entrypoint.sh ./
+RUN chmod +x entrypoint.sh
+
+# Credentials path: default or set at runtime (writable path when using CREDENTIALS_SOURCE)
 ENV CREDENTIALS_PATH=/app/linkedin-credentials.json
 ENV NODE_ENV=production
 ENV PORT=8080
@@ -30,4 +33,5 @@ EXPOSE 8080
 
 # Run as non-root (Playwright image supports pwuser)
 USER pwuser
+ENTRYPOINT ["./entrypoint.sh"]
 CMD ["node", "dist/server.js"]
