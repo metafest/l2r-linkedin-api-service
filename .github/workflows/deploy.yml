@@ -1,0 +1,79 @@
+name: Deploy LinkedIn API Service to Cloud Run
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  PROJECT_ID: resume-builder-467117
+  REGION: asia-southeast1
+  SERVICE_NAME: l2r-linkedin-api-service
+  REGISTRY: asia-southeast1-docker.pkg.dev
+  WORKLOAD_IDENTITY_PROVIDER: projects/188294918674/locations/global/workloadIdentityPools/github-actions-pool/providers/github-provider
+  SERVICE_ACCOUNT: github-actions-deployer@resume-builder-467117.iam.gserviceaccount.com
+  NODE_ENV: production
+
+jobs:
+  deploy:
+    name: Deploy to Cloud Run
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: |
+          gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            -t ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/cloud-run-source-deploy/${{ env.SERVICE_NAME }}:${{ github.sha }} \
+            -t ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/cloud-run-source-deploy/${{ env.SERVICE_NAME }}:latest \
+            -f Dockerfile \
+            .
+
+      - name: Push Docker image
+        run: |
+          docker push ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/cloud-run-source-deploy/${{ env.SERVICE_NAME }}:${{ github.sha }}
+          docker push ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/cloud-run-source-deploy/${{ env.SERVICE_NAME }}:latest
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy ${{ env.SERVICE_NAME }} \
+            --image=${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/cloud-run-source-deploy/${{ env.SERVICE_NAME }}:${{ github.sha }} \
+            --region=${{ env.REGION }} \
+            --platform=managed \
+            --allow-unauthenticated \
+            --port=8080 \
+            --min-instances=0 \
+            --max-instances=5 \
+            --memory=2Gi \
+            --cpu=2 \
+            --timeout=300 \
+            --set-env-vars="PORT=8080,HEADLESS=true,AMBIENT_TRAFFIC=false,NODE_ENV=${{ env.NODE_ENV }},CREDENTIALS_PATH=/secrets/linkedin-credentials.json" \
+            --set-secrets="API_TOKEN=api-token:latest" \
+            --set-secrets="/secrets/linkedin-credentials.json=linkedin-credentials-json:latest"
+
+      - name: Show deployment URL
+        run: |
+          echo "Deployment successful!"
+          gcloud run services describe ${{ env.SERVICE_NAME }} \
+            --region=${{ env.REGION }} \
+            --format='value(status.url)'
