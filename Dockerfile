@@ -31,7 +31,6 @@ ENV PORT=8080
 
 EXPOSE 8080
 
-# Run as non-root (Playwright image supports pwuser)
-USER pwuser
+# Entrypoint runs as root to copy secret and chown; it then execs as pwuser (see entrypoint.sh)
 ENTRYPOINT ["./entrypoint.sh"]
 CMD ["node", "dist/server.js"]
