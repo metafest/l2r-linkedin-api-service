@@ -481,6 +481,30 @@ export class LinkedInService {
     return null;
   }
 
+  private parseDurationCaption(caption: string): {
+    startDate: string | null;
+    endDate: string | null;
+    duration: string | null;
+  } {
+    if (!caption || caption === 'N/A') {
+      return { startDate: null, endDate: null, duration: null };
+    }
+    // Format: "Nov 2025 - Present · 5 mos" or "Jan 2020 - Dec 2022 · 2 yrs 11 mos"
+    const [datePart, durationPart] = caption.split(' · ');
+    const duration = durationPart?.trim() || null;
+
+    if (datePart) {
+      const dashIndex = datePart.indexOf(' - ');
+      if (dashIndex !== -1) {
+        const startDate = datePart.slice(0, dashIndex).trim() || null;
+        const endDate = datePart.slice(dashIndex + 3).trim() || null;
+        return { startDate, endDate, duration };
+      }
+    }
+
+    return { startDate: caption, endDate: null, duration: null };
+  }
+
   private extractEntityData(
     entity: any,
     sectionType: string,
@@ -520,14 +544,18 @@ export class LinkedInService {
     }
 
     switch (sectionType) {
-      case 'experience':
+      case 'experience': {
+        const { startDate, endDate, duration } = this.parseDurationCaption(caption);
         return {
           title,
           company: company !== 'N/A' ? company : subtitle,
-          duration: caption,
+          startDate,
+          endDate,
+          duration,
           location: metadata,
           description,
         };
+      }
       case 'education':
         return {
           schoolName: title,
@@ -552,14 +580,18 @@ export class LinkedInService {
           organization: subtitle,
           issueDate: caption,
         };
-      case 'volunteering-experiences':
+      case 'volunteering-experiences': {
+        const { startDate, endDate, duration } = this.parseDurationCaption(caption);
         return {
           role: title,
           organization: company !== 'N/A' ? company : subtitle,
-          duration: caption,
+          startDate,
+          endDate,
+          duration,
           cause: metadata,
           description,
         };
+      }
       default:
         return null;
     }
